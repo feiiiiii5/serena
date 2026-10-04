@@ -22,6 +22,9 @@ Status of the `main` branch. Changes prior to the next official version change w
   - Fix: MCP server now reports Serena's version instead of the installed MCP SDK version (#1889)
   - Fix: importing Serena no longer loads the `anthropic` package unless the Anthropic token counter is
     actually used; the unconditional import added seconds to CLI/MCP startup on some machines (#2012)
+  - Fix: `FsApi.read_file` now supports negative `end_line` indices on the same convention as
+    `start_line` (negative counts from the end of the file); previously negative `end_line`
+    silently produced empty output (#2110)
   - Fix: Parallel agents auto-registering projects could overwrite each other's changes to the global
     project list in `serena_config.yml`
   - Perf: `search_for_pattern` resolved each match's line number by rescanning the file from the

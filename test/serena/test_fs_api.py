@@ -44,6 +44,9 @@ def test_read_file(api: FsApi) -> None:
 
     assert api.read_file("src/a.py", start_line=1, end_line=1).text == "y = foo(2)"
     assert api.read_file("src/a.py", start_line=-2).lines == ["z = 3", ""]
+    assert api.read_file("src/a.py", start_line=0, end_line=-1).text == "x = foo(1)\ny = foo(2)\nz = 3\n"
+    assert api.read_file("src/a.py", start_line=-3, end_line=-1).text == "y = foo(2)\nz = 3\n"
+    assert api.read_file("src/a.py", start_line=1, end_line=-2).text == "y = foo(2)\nz = 3"
 
 
 def test_create_text_file(api: FsApi, project: Project) -> None:
