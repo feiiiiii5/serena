@@ -6,6 +6,7 @@ The implementation of editing operations, which are independent of the language 
 from typing import TYPE_CHECKING, Literal
 
 from serena.code_editor import EditedFileContext
+from serena.symbol import PositionInFile
 from serena.tools import (
     DeleteLinesTool,
     InsertAfterSymbolTool,
@@ -227,8 +228,9 @@ class EditApi(FacadeApi):
         :return: a success message
         """
         code_editor = self._create_code_editor()
-        code_editor.delete_lines(relative_path, start_line, end_line)
-        code_editor.insert_at_line(relative_path, start_line, self._normalize_inserted_content(content))
+        with code_editor.edited_file_context(relative_path) as edited_file:
+            edited_file.delete_text_between_positions(PositionInFile(line=start_line, col=0), PositionInFile(line=end_line + 1, col=0))
+            edited_file.insert_text_at_position(PositionInFile(line=start_line, col=0), self._normalize_inserted_content(content))
         return SUCCESS_RESULT
 
     @facade_method(optional=True, can_edit=True, corresponding_tool=InsertAtLineTool)

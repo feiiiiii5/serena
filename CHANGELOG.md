@@ -24,6 +24,8 @@ Status of the `main` branch. Changes prior to the next official version change w
     actually used; the unconditional import added seconds to CLI/MCP startup on some machines (#2012)
   - Fix: Parallel agents auto-registering projects could overwrite each other's changes to the global
     project list in `serena_config.yml`
+  - Fix: `replace_lines` now performs the delete and the insert inside a single file-editing transaction,
+    so a failure performing the insert no longer leaves the deleted lines on disk (#2109)
   - Perf: `search_for_pattern` resolved each match's line number by rescanning the file from the
     beginning (O(n) per match, O(n*m) total for m matches); coordinates are now resolved via the new
     `TextCoordinates` abstraction (cached line starts + binary search)

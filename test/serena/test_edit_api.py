@@ -66,3 +66,59 @@ def test_replace_in_files_guard_failure_includes_preview(api: EditApi) -> None:
     with pytest.raises(ValueError, match="expected_count=1") as exc_info:
         api.replace_in_files("foo", "bar", mode="literal", expected_count=1)
     assert "b.py" in str(exc_info.value)  # the listing of prospective changes is included
+
+
+def _make_fake_code_editor(content: str, fail_on_insert: bool = False):
+    """A string-backed stand-in for CodeEditor that tracks how many times it saves."""
+    import contextlib
+
+    from solidlsp.ls_utils import TextUtils
+
+    state = {"contents": content, "opened": 0, "saved": 0}
+
+    class FakeEditedFile:
+        def __init__(self, contents: str):
+            self.contents = contents
+
+        def delete_text_between_positions(self, start_pos, end_pos):
+            new, _ = TextUtils.delete_text_between_positions(self.contents, start_pos.line, start_pos.col, end_pos.line, end_pos.col)
+            self.contents = new
+
+        def insert_text_at_position(self, pos, text):
+            if fail_on_insert:
+                raise ValueError("insert failed")
+            new, _, _ = TextUtils.insert_text_at_position(self.contents, pos.line, pos.col, text)
+            self.contents = new
+
+    class FakeCodeEditor:
+        def edited_file_context(self, relative_path):
+            @contextlib.contextmanager
+            def _ctx():
+                state["opened"] += 1
+                edited = FakeEditedFile(state["contents"])
+                yield edited
+                state["contents"] = edited.contents
+                state["saved"] += 1
+
+            return _ctx()
+
+    return FakeCodeEditor(), state
+
+
+def test_replace_lines_uses_a_single_write(api: EditApi, project: Project, monkeypatch) -> None:
+    fake, state = _make_fake_code_editor("a\nb\nc\n")
+    monkeypatch.setattr(api, "_create_code_editor", lambda: fake)
+    assert api.replace_lines("a.py", 1, 1, "inserted\n") == "OK"
+    assert state["opened"] == 1
+    assert state["saved"] == 1
+    assert state["contents"] == "a\ninserted\nc\n"
+
+
+def test_replace_lines_does_not_save_when_insertion_fails(api: EditApi, project: Project, monkeypatch) -> None:
+    fake, state = _make_fake_code_editor("a\nb\nc\n", fail_on_insert=True)
+    monkeypatch.setattr(api, "_create_code_editor", lambda: fake)
+    with pytest.raises(ValueError, match="insert failed"):
+        api.replace_lines("a.py", 1, 1, "inserted\n")
+    assert state["opened"] == 1
+    assert state["saved"] == 0
+    assert state["contents"] == "a\nb\nc\n"
